@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Ontology Visualization</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        background-color: #222;
+        color: white;
+        font-family: Arial, sans-serif;
+      }
+      .container {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+      /* Graph panel on the left fills available space */
+      .graph {
+        flex: 1;
+        position: relative;
+      }
+      .graph iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+      /* Hierarchy panel on the right with fixed width */
+      .hierarchy {
+        width: 300px;
+        overflow-y: auto;
+        background-color: #333;
+        padding: 10px;
+      }
+      /* Collapsible tree styles */
+      ul {
+        list-style: none;
+        padding-left: 20px;
+      }
+      li {
+        margin: 5px 0;
+      }
+      .caret {
+        cursor: pointer;
+        user-select: none;
+      }
+      .caret:before {
+        content: "\25B6";
+        display: inline-block;
+        margin-right: 6px;
+      }
+      .caret-down:before {
+        transform: rotate(90deg);
+      }
+      .nested {
+        display: none;
+      }
+      .active {
+        display: block;
+      }
+      .highlight {
+        background-color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Graph panel -->
+      <div class="graph">
+        <iframe src="{{ url_for('static', filename='graph.html') }}"></iframe>
+      </div>
+      <!-- Hierarchy panel -->
+      <div class="hierarchy">
+        <h2>Ontology Hierarchy</h2>
+        {{ tree_html|safe }}
+      </div>
+    </div>
+    <script>
+      // Set up collapsible tree toggles.
+      var toggler = document.getElementsByClassName("caret");
+      for (var i = 0; i < toggler.length; i++) {
+        toggler[i].addEventListener("click", function(e) {
+          e.stopPropagation();
+          var nested = this.parentElement.querySelector(".nested");
+          if (nested) {
+            nested.classList.toggle("active");
+            this.classList.toggle("caret-down");
+          }
+        });
+      }
+      
+      // Expand all ancestor nested lists of a given element.
+      function expandAncestors(elem) {
+        var parent = elem.parentElement;
+        while (parent) {
+          if (parent.classList.contains("nested") && !parent.classList.contains("active")) {
+            parent.classList.add("active");
+            var li = parent.parentElement;
+            if (li) {
+              var caret = li.querySelector(".caret");
+              if (caret && !caret.classList.contains("caret-down")) {
+                caret.classList.add("caret-down");
+              }
+            }
+          }
+          parent = parent.parentElement;
+        }
+      }
+      
+      // Highlight and auto-expand the corresponding hierarchy node.
+      function highlightHierarchy(nodeId) {
+        // Remove existing highlights.
+        document.querySelectorAll('.highlight').forEach(function(el) {
+          el.classList.remove('highlight');
+        });
+        // Use a regex similar to Python's sanitize: replace one or more non-word characters with "_".
+        var sanitizedId = "node_" + nodeId.replace(/[^a-zA-Z0-9_]+/g, "_");
+        var elem = document.getElementById(sanitizedId);
+        if (elem) {
+          // Expand ancestors so that the element becomes visible.
+          expandAncestors(elem);
+          // Highlight and scroll the element into view.
+          elem.classList.add("highlight");
+          elem.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+      window.highlightHierarchy = highlightHierarchy;
+    </script>
+  </body>
+</html>
