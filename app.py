@@ -126,7 +126,7 @@ def index():
     graph_path = os.path.join("static", "graph.html")
     html_str = net.generate_html()
     
-    # Inject custom CSS.
+    # Inject custom CSS for a dark, full-viewport view.
     custom_css = """
     <style>
       html, body {
@@ -146,9 +146,10 @@ def index():
     """
     html_str = html_str.replace("</head>", custom_css)
     
-    # Inject custom JS: node click handler and message listener for filtering.
+    # Inject custom JS that listens for various postMessages.
     custom_js = """
     <script type="text/javascript">
+      // When a node is clicked, notify the parent.
       network.on("click", function(params) {
         if (params.nodes.length > 0) {
           var nodeId = params.nodes[0];
@@ -157,15 +158,36 @@ def index():
           }
         }
       });
+      
+      // Listen for messages from the parent page.
       window.addEventListener("message", function(e) {
-        if (e.data && e.data.type === "toggleNodes") {
-          var groups = e.data.groups;
+        var data = e.data;
+        if (!data || !data.type) return;
+        
+        if (data.type === "updateNodeFilter") {
+          // Data contains nodeTypes (an object) and search (a string)
+          var nodeTypes = data.nodeTypes;
+          var search = data.search.toLowerCase();
           var nodes = network.body.data.nodes.get();
           nodes.forEach(function(node) {
-            if (groups.hasOwnProperty(node.group)) {
-              network.body.data.nodes.update({id: node.id, hidden: !groups[node.group]});
+            var typeVisible = (nodeTypes[node.group] === undefined ? true : nodeTypes[node.group]);
+            var searchVisible = true;
+            if (search && node.label) {
+              searchVisible = node.label.toLowerCase().includes(search);
+            }
+            network.body.data.nodes.update({id: node.id, hidden: !(typeVisible && searchVisible)});
+          });
+        } else if (data.type === "toggleEdges") {
+          // Data contains edges: an object mapping edge titles to booleans.
+          var edgesFilter = data.edges;
+          var edges = network.body.data.edges.get();
+          edges.forEach(function(edge) {
+            if (edge.title && edgesFilter.hasOwnProperty(edge.title)) {
+              network.body.data.edges.update({id: edge.id, hidden: !edgesFilter[edge.title]});
             }
           });
+        } else if (data.type === "resetView") {
+          network.fit();
         }
       });
     </script>

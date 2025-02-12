@@ -84,8 +84,20 @@
         height: 12px;
         margin-right: 6px;
       }
-      /* Filter section for node types */
-      .filter-section {
+      /* Node filter: type checkboxes and search input */
+      .filter-section, .search-section {
+        margin-bottom: 20px;
+      }
+      /* Relationship (edge) filter */
+      .edge-filter-section {
+        margin-bottom: 20px;
+      }
+      /* Interactive navigation section */
+      .nav-section {
+        margin-bottom: 20px;
+      }
+      /* Detailed Annotations toggle */
+      .annotation-section {
         margin-bottom: 20px;
       }
       /* Collapsible tree styles */
@@ -140,6 +152,11 @@
         margin-top: 10px;
         padding: 5px;
       }
+      input[type="text"] {
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+      }
     </style>
   </head>
   <body>
@@ -160,12 +177,35 @@
           <p><span class="legend-color" style="background-color: #e67e22;"></span> Property</p>
           <p><span class="legend-color" style="background-color: #2ecc71;"></span> Individual</p>
         </div>
-        <!-- Filter Section -->
+        <!-- Node Filter Section -->
         <div class="section filter-section">
           <h3>Filter Nodes</h3>
           <label><input type="checkbox" class="filter-checkbox" data-group="class" checked> Class</label><br>
           <label><input type="checkbox" class="filter-checkbox" data-group="property" checked> Property</label><br>
           <label><input type="checkbox" class="filter-checkbox" data-group="individual" checked> Individual</label>
+        </div>
+        <!-- Search Section -->
+        <div class="section search-section">
+          <h3>Search Nodes</h3>
+          <input type="text" id="search-input" placeholder="Enter search text">
+        </div>
+        <!-- Edge Filter Section -->
+        <div class="section edge-filter-section">
+          <h3>Filter Edges</h3>
+          <label><input type="checkbox" class="edge-filter" data-edge="subClassOf" checked> Subclass Relationships</label><br>
+          <label><input type="checkbox" class="edge-filter" data-edge="instance_of" checked> Instance Relationships</label><br>
+          <label><input type="checkbox" class="edge-filter" data-edge="domain" checked> Domain Relationships</label><br>
+          <label><input type="checkbox" class="edge-filter" data-edge="range" checked> Range Relationships</label>
+        </div>
+        <!-- Interactive Navigation Section -->
+        <div class="section nav-section">
+          <h3>Interactive Navigation</h3>
+          <button id="reset-view">Reset Graph View</button>
+        </div>
+        <!-- Detailed Annotations Section -->
+        <div class="section annotation-section">
+          <h3>Detailed Annotations</h3>
+          <label><input type="checkbox" id="toggle-detailed"> Show Detailed Annotations by default</label>
         </div>
         <!-- Hierarchy Section -->
         <div class="section hierarchy">
@@ -255,8 +295,14 @@
               } else {
                 document.getElementById('toggle-all').style.display = "none";
               }
-              fullDetailsDiv.style.display = "none";
-              document.getElementById('toggle-all').textContent = "Show All Info";
+              // If "Show Detailed Annotations" is checked, display details immediately.
+              if (document.getElementById('toggle-detailed').checked) {
+                fullDetailsDiv.style.display = "block";
+                document.getElementById('toggle-all').textContent = "Hide All Info";
+              } else {
+                fullDetailsDiv.style.display = "none";
+                document.getElementById('toggle-all').textContent = "Show All Info";
+              }
             }
           })
           .catch(error => {
@@ -317,24 +363,51 @@
         document.body.style.cursor = 'default';
       });
       
-      // Node filter functionality.
-      function sendFilterUpdate() {
+      // Combine node type filter and search filter.
+      function sendNodeFilterUpdate() {
         var checkboxes = document.querySelectorAll('.filter-checkbox');
-        var groups = {};
+        var nodeTypes = {};
         checkboxes.forEach(function(cb) {
           var group = cb.getAttribute('data-group');
-          groups[group] = cb.checked;
+          nodeTypes[group] = cb.checked;
         });
+        var search = document.getElementById('search-input').value || "";
         var iframe = document.querySelector('.graph iframe');
-        iframe.contentWindow.postMessage({type: "toggleNodes", groups: groups}, "*");
+        iframe.contentWindow.postMessage({type: "updateNodeFilter", nodeTypes: nodeTypes, search: search}, "*");
       }
       
       document.querySelectorAll('.filter-checkbox').forEach(function(cb) {
-        cb.addEventListener('change', sendFilterUpdate);
+        cb.addEventListener('change', sendNodeFilterUpdate);
+      });
+      document.getElementById('search-input').addEventListener('input', sendNodeFilterUpdate);
+      
+      // Edge filter: send update to toggle edges.
+      function sendEdgeFilterUpdate() {
+        var checkboxes = document.querySelectorAll('.edge-filter');
+        var edges = {};
+        checkboxes.forEach(function(cb) {
+          var edgeType = cb.getAttribute('data-edge');
+          edges[edgeType] = cb.checked;
+        });
+        var iframe = document.querySelector('.graph iframe');
+        iframe.contentWindow.postMessage({type: "toggleEdges", edges: edges}, "*");
+      }
+      
+      document.querySelectorAll('.edge-filter').forEach(function(cb) {
+        cb.addEventListener('change', sendEdgeFilterUpdate);
       });
       
-      // Send initial filter update on load.
-      window.addEventListener('load', sendFilterUpdate);
+      // Reset Graph View button.
+      document.getElementById('reset-view').addEventListener('click', function() {
+        var iframe = document.querySelector('.graph iframe');
+        iframe.contentWindow.postMessage({type: "resetView"}, "*");
+      });
+      
+      // Send initial filters on load.
+      window.addEventListener('load', function() {
+        sendNodeFilterUpdate();
+        sendEdgeFilterUpdate();
+      });
     </script>
   </body>
 </html>
