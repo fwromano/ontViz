@@ -24,8 +24,8 @@ Follow these steps to set up the project:
 ### 1. Clone the Repository (or Download the Files)
 
 ```bash
-git clone https://github.com/fwromano/oViz.git
-cd oViz
+git clone https://github.com/fwromano/ontViz.git
+cd ontViz
 ```
 ### 2. Create and Activate a Virtual Environment
 
