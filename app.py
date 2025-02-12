@@ -1,6 +1,6 @@
 import os
 import re
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import owlready2
 from pyvis.network import Network
 
@@ -24,7 +24,6 @@ def generate_tree_html(cls):
     """
     Recursively generate a collapsible tree HTML for a given class.
     Each <li> gets an id based on the class IRI.
-    If the class has subclasses, a clickable <span class="caret"> is added.
     """
     id_str = sanitize_id(str(cls.iri))
     name = cls.name if cls.name else str(cls)
@@ -40,10 +39,7 @@ def generate_tree_html(cls):
     return html
 
 def get_top_level_classes():
-    """
-    Return classes that do not have any parent other than owl:Thing.
-    This yields a broader tree than just using owl:Thing.
-    """
+    """Return classes with no parents (except owl:Thing)."""
     top = []
     for cls in ontology.classes():
         parents = [p for p in cls.is_a if isinstance(p, owlready2.entity.ThingClass)]
@@ -51,41 +47,71 @@ def get_top_level_classes():
             top.append(cls)
     return top
 
+def get_full_details(entity):
+    """Collect extra details by iterating over non-internal attributes."""
+    details = {}
+    for key in dir(entity):
+        if key.startswith('_') or key in ('name', 'iri', 'comment'):
+            continue
+        try:
+            value = getattr(entity, key)
+            if not callable(value):
+                if isinstance(value, list):
+                    value = ", ".join(str(v) for v in value)
+                details[key] = str(value)
+        except Exception:
+            continue
+    return details
+
 @app.route('/')
 def index():
     if ontology is None:
         return redirect(url_for("upload"))
     
-    # Build the pyvis graph with 100% dimensions and dark styling.
+    # Define colors for node groups.
+    group_colors = {
+        'class': '#3498db',
+        'property': '#e67e22',
+        'individual': '#2ecc71'
+    }
+    
     net = Network(height="100%", width="100%", bgcolor="#222222", font_color="white")
     
     # Add nodes for classes, properties, and individuals.
     for cls in ontology.classes():
-        net.add_node(str(cls.iri), label=cls.name, title=str(cls.iri), group="class")
+        net.add_node(str(cls.iri), label=cls.name, title=str(cls.iri),
+                     group="class", color=group_colors["class"])
     for prop in ontology.properties():
-        net.add_node(str(prop.iri), label=prop.name, title=str(prop.iri), group="property")
+        net.add_node(str(prop.iri), label=prop.name, title=str(prop.iri),
+                     group="property", color=group_colors["property"])
     for ind in ontology.individuals():
-        net.add_node(str(ind.iri), label=ind.name, title=str(ind.iri), group="individual")
+        net.add_node(str(ind.iri), label=ind.name, title=str(ind.iri),
+                     group="individual", color=group_colors["individual"])
     
-    # Add edges: subclass relationships.
+    # Add subclass edges.
     for cls in ontology.classes():
         for sup in cls.is_a:
             if isinstance(sup, owlready2.entity.ThingClass):
                 node_cls = str(cls.iri)
                 node_sup = str(sup.iri)
                 if node_cls not in net.get_nodes():
-                    net.add_node(node_cls)
+                    net.add_node(node_cls, color=group_colors["class"])
                 if node_sup not in net.get_nodes():
-                    net.add_node(node_sup)
+                    net.add_node(node_sup, color=group_colors["class"])
                 net.add_edge(node_cls, node_sup, title="subClassOf")
     
-    # Add edges: individual type assertions.
+    # Add individual type edges.
     for ind in ontology.individuals():
         for cls in ind.is_a:
             if isinstance(cls, owlready2.entity.ThingClass):
-                net.add_edge(str(ind.iri), str(cls.iri), title="instance_of")
+                node_ind = str(ind.iri)
+                node_cls = str(cls.iri)
+                if node_cls not in net.get_nodes():
+                    net.add_node(node_cls, label=cls.name or node_cls,
+                                 title=node_cls, group="class", color=group_colors["class"])
+                net.add_edge(node_ind, node_cls, title="instance_of")
     
-    # Add edges: property domain and range.
+    # Add property domain and range edges.
     for prop in ontology.properties():
         if hasattr(prop, "domain"):
             for d in prop.domain:
@@ -100,7 +126,7 @@ def index():
     graph_path = os.path.join("static", "graph.html")
     html_str = net.generate_html()
     
-    # Inject CSS to remove any white space and force a dark full-viewport view.
+    # Inject custom CSS.
     custom_css = """
     <style>
       html, body {
@@ -120,7 +146,7 @@ def index():
     """
     html_str = html_str.replace("</head>", custom_css)
     
-    # Inject JS so that a node click notifies the parent page.
+    # Inject custom JS: node click handler and message listener for filtering.
     custom_js = """
     <script type="text/javascript">
       network.on("click", function(params) {
@@ -129,6 +155,17 @@ def index():
           if (parent && typeof parent.highlightHierarchy === 'function') {
             parent.highlightHierarchy(nodeId);
           }
+        }
+      });
+      window.addEventListener("message", function(e) {
+        if (e.data && e.data.type === "toggleNodes") {
+          var groups = e.data.groups;
+          var nodes = network.body.data.nodes.get();
+          nodes.forEach(function(node) {
+            if (groups.hasOwnProperty(node.group)) {
+              network.body.data.nodes.update({id: node.id, hidden: !groups[node.group]});
+            }
+          });
         }
       });
     </script>
@@ -183,6 +220,52 @@ def upload():
       </body>
     </html>
     '''
+
+@app.route('/node_info')
+def node_info():
+    node_id = request.args.get('node_id')
+    if not node_id:
+        return jsonify({'error': 'No node id provided'}), 400
+    entity = None
+    entity_type = None
+    # Search in classes.
+    for cls in ontology.classes():
+        if str(cls.iri) == node_id:
+            entity = cls
+            entity_type = "Class"
+            break
+    if not entity:
+        for ind in ontology.individuals():
+            if str(ind.iri) == node_id:
+                entity = ind
+                entity_type = "Individual"
+                break
+    if not entity:
+        for prop in ontology.properties():
+            if str(prop.iri) == node_id:
+                entity = prop
+                entity_type = "Property"
+                break
+    if not entity:
+        return jsonify({'error': 'Entity not found'}), 404
+
+    label = getattr(entity, "name", None) or str(entity)
+    comment = None
+    if hasattr(entity, "comment"):
+        if isinstance(entity.comment, list):
+            comment = " ".join(entity.comment)
+        else:
+            comment = entity.comment
+
+    basic_info = {
+        'label': label,
+        'iri': str(entity.iri),
+        'type': entity_type,
+        'comment': comment
+    }
+    full_details = get_full_details(entity)
+    basic_info['all_details'] = full_details
+    return jsonify(basic_info)
 
 if __name__ == '__main__':
     app.run(debug=True)

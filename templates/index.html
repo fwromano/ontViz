@@ -16,8 +16,9 @@
         display: flex;
         height: 100vh;
         overflow: hidden;
+        position: relative;
       }
-      /* Graph panel on the left fills available space */
+      /* Graph panel */
       .graph {
         flex: 1;
         position: relative;
@@ -30,12 +31,62 @@
         height: 100%;
         border: none;
       }
-      /* Hierarchy panel on the right with fixed width */
-      .hierarchy {
+      /* Drag bar between graph and sidebar */
+      #dragbar {
+        width: 5px;
+        cursor: ew-resize;
+        background-color: #444;
+      }
+      /* Sidebar styles */
+      .sidebar {
         width: 300px;
+        min-width: 200px;
+        max-width: 600px;
         overflow-y: auto;
         background-color: #333;
         padding: 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      #toggle-sidebar {
+        background-color: #555;
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-bottom: 10px;
+      }
+      /* Sidebar reopen button */
+      #sidebar-reopen {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: #555;
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        cursor: pointer;
+        display: none;
+        z-index: 1000;
+      }
+      .section {
+        margin-bottom: 20px;
+      }
+      .section h2, .section h3, .section h4 {
+        margin-top: 0;
+      }
+      .legend p {
+        margin: 5px 0;
+      }
+      .legend-color {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 6px;
+      }
+      /* Filter section for node types */
+      .filter-section {
+        margin-bottom: 20px;
       }
       /* Collapsible tree styles */
       ul {
@@ -44,6 +95,8 @@
       }
       li {
         margin: 5px 0;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
       .caret {
         cursor: pointer;
@@ -66,6 +119,27 @@
       .highlight {
         background-color: #555;
       }
+      /* Details panel */
+      #details, #full-details {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+      #details {
+        background-color: #444;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      #full-details {
+        display: none;
+        margin-top: 10px;
+        background-color: #555;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      #toggle-all {
+        margin-top: 10px;
+        padding: 5px;
+      }
     </style>
   </head>
   <body>
@@ -74,14 +148,43 @@
       <div class="graph">
         <iframe src="{{ url_for('static', filename='graph.html') }}"></iframe>
       </div>
-      <!-- Hierarchy panel -->
-      <div class="hierarchy">
-        <h2>Ontology Hierarchy</h2>
-        {{ tree_html|safe }}
+      <!-- Drag bar for resizing -->
+      <div id="dragbar"></div>
+      <!-- Sidebar panel -->
+      <div class="sidebar" id="sidebar">
+        <button id="toggle-sidebar">Collapse Sidebar</button>
+        <!-- Legend Section -->
+        <div class="section legend">
+          <h3>Key</h3>
+          <p><span class="legend-color" style="background-color: #3498db;"></span> Class</p>
+          <p><span class="legend-color" style="background-color: #e67e22;"></span> Property</p>
+          <p><span class="legend-color" style="background-color: #2ecc71;"></span> Individual</p>
+        </div>
+        <!-- Filter Section -->
+        <div class="section filter-section">
+          <h3>Filter Nodes</h3>
+          <label><input type="checkbox" class="filter-checkbox" data-group="class" checked> Class</label><br>
+          <label><input type="checkbox" class="filter-checkbox" data-group="property" checked> Property</label><br>
+          <label><input type="checkbox" class="filter-checkbox" data-group="individual" checked> Individual</label>
+        </div>
+        <!-- Hierarchy Section -->
+        <div class="section hierarchy">
+          <h2>Ontology Hierarchy</h2>
+          {{ tree_html|safe }}
+        </div>
+        <!-- Details Section -->
+        <div class="section details">
+          <h2>Details</h2>
+          <div id="details">Select a node to see details.</div>
+          <button id="toggle-all" style="display:none;">Show All Info</button>
+          <div id="full-details"></div>
+        </div>
       </div>
+      <!-- Sidebar reopen button -->
+      <button id="sidebar-reopen">&#9776;</button>
     </div>
     <script>
-      // Set up collapsible tree toggles.
+      // Collapsible tree toggles.
       var toggler = document.getElementsByClassName("caret");
       for (var i = 0; i < toggler.length; i++) {
         toggler[i].addEventListener("click", function(e) {
@@ -94,7 +197,7 @@
         });
       }
       
-      // Expand all ancestor nested lists of a given element.
+      // Expand ancestors of an element.
       function expandAncestors(elem) {
         var parent = elem.parentElement;
         while (parent) {
@@ -112,24 +215,126 @@
         }
       }
       
-      // Highlight and auto-expand the corresponding hierarchy node.
+      // Highlight hierarchy node and fetch node details.
       function highlightHierarchy(nodeId) {
-        // Remove existing highlights.
         document.querySelectorAll('.highlight').forEach(function(el) {
           el.classList.remove('highlight');
         });
-        // Use a regex similar to Python's sanitize: replace one or more non-word characters with "_".
         var sanitizedId = "node_" + nodeId.replace(/[^a-zA-Z0-9_]+/g, "_");
         var elem = document.getElementById(sanitizedId);
         if (elem) {
-          // Expand ancestors so that the element becomes visible.
           expandAncestors(elem);
-          // Highlight and scroll the element into view.
           elem.classList.add("highlight");
           elem.scrollIntoView({ behavior: "smooth", block: "center" });
         }
+        fetch('/node_info?node_id=' + encodeURIComponent(nodeId))
+          .then(response => response.json())
+          .then(data => {
+            var detailsDiv = document.getElementById('details');
+            if (data.error) {
+              detailsDiv.innerHTML = '<p>Error: ' + data.error + '</p>';
+              document.getElementById('toggle-all').style.display = "none";
+              document.getElementById('full-details').style.display = "none";
+            } else {
+              var html = '<h3>' + data.label + '</h3>' +
+                         '<p><strong>IRI:</strong> ' + data.iri + '</p>' +
+                         '<p><strong>Type:</strong> ' + data.type + '</p>';
+              if (data.comment) {
+                html += '<p><strong>Comment:</strong> ' + data.comment + '</p>';
+              }
+              detailsDiv.innerHTML = html;
+              var fullHtml = '<h4>All Details</h4><ul>';
+              for (var key in data.all_details) {
+                fullHtml += '<li><strong>' + key + ':</strong> ' + data.all_details[key] + '</li>';
+              }
+              fullHtml += '</ul>';
+              var fullDetailsDiv = document.getElementById('full-details');
+              fullDetailsDiv.innerHTML = fullHtml;
+              if (Object.keys(data.all_details).length > 0) {
+                document.getElementById('toggle-all').style.display = "block";
+              } else {
+                document.getElementById('toggle-all').style.display = "none";
+              }
+              fullDetailsDiv.style.display = "none";
+              document.getElementById('toggle-all').textContent = "Show All Info";
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching node details:', error);
+          });
       }
+      
+      document.getElementById('toggle-all').addEventListener('click', function() {
+        var fullDetailsDiv = document.getElementById('full-details');
+        if (fullDetailsDiv.style.display === "none") {
+          fullDetailsDiv.style.display = "block";
+          this.textContent = "Hide All Info";
+        } else {
+          fullDetailsDiv.style.display = "none";
+          this.textContent = "Show All Info";
+        }
+      });
+      
       window.highlightHierarchy = highlightHierarchy;
+      
+      // Sidebar toggle functionality.
+      var sidebar = document.getElementById('sidebar');
+      var toggleSidebarBtn = document.getElementById('toggle-sidebar');
+      var sidebarReopen = document.getElementById('sidebar-reopen');
+      toggleSidebarBtn.addEventListener('click', function() {
+        sidebar.style.display = "none";
+        document.getElementById('dragbar').style.display = "none";
+        sidebarReopen.style.display = "block";
+      });
+      
+      sidebarReopen.addEventListener('click', function() {
+        sidebar.style.display = "flex";
+        document.getElementById('dragbar').style.display = "block";
+        sidebarReopen.style.display = "none";
+      });
+      
+      // Drag bar for resizing sidebar.
+      var dragbar = document.getElementById('dragbar');
+      var container = document.getElementsByClassName('container')[0];
+      var isResizing = false;
+      
+      dragbar.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        document.body.style.cursor = 'ew-resize';
+      });
+      
+      document.addEventListener('mousemove', function(e) {
+        if (!isResizing) return;
+        var containerRect = container.getBoundingClientRect();
+        var newWidth = containerRect.right - e.clientX;
+        if (newWidth < 200) newWidth = 200;
+        if (newWidth > 600) newWidth = 600;
+        sidebar.style.width = newWidth + 'px';
+      });
+      
+      document.addEventListener('mouseup', function(e) {
+        isResizing = false;
+        document.body.style.cursor = 'default';
+      });
+      
+      // Node filter functionality.
+      function sendFilterUpdate() {
+        var checkboxes = document.querySelectorAll('.filter-checkbox');
+        var groups = {};
+        checkboxes.forEach(function(cb) {
+          var group = cb.getAttribute('data-group');
+          groups[group] = cb.checked;
+        });
+        var iframe = document.querySelector('.graph iframe');
+        iframe.contentWindow.postMessage({type: "toggleNodes", groups: groups}, "*");
+      }
+      
+      document.querySelectorAll('.filter-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', sendFilterUpdate);
+      });
+      
+      // Send initial filter update on load.
+      window.addEventListener('load', sendFilterUpdate);
     </script>
   </body>
 </html>
