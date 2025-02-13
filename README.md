@@ -39,7 +39,7 @@ curl -s https://raw.githubusercontent.com/fwromano/ontViz/main/setup.sh | bash
 ```
 ### For Windows(PowerShell):
 ```bash
-iwr -useb https://raw.githubusercontent.com/fwromano/ontViz/main/setup.bat | iex
+iwr -useb https://raw.githubusercontent.com/fwromano/ontViz/main/setup.ps1 | iex
 ```
 These one‑line commands will clone the repository (if needed), create a virtual environment, install dependencies, start the Flask server, and open your browser automatically.
 
@@ -50,7 +50,7 @@ If the project is already set up, you can simply launch the app:
 ```
 ### For Windows(PowerShell):
 ```bash
-.\launch.bat
+.\launch.ps1
 ```
 
 ## Setup Instructions
