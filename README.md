@@ -34,22 +34,43 @@ OntViz is a powerful Flask web application that lets you upload and explore onto
 ## Quick Start
 
 ### For macOS/Linux:
+#### 1. Clone and Run Setup:
 ```bash
 curl -s https://raw.githubusercontent.com/fwromano/ontViz/main/setup.sh | bash
 ```
+This command will:
+- Clone the repository (if needed)
+- Create a virtual environment
+- Install dependencies
+- Start the Flask server
+- Automatically open your browser
+#### 2. Launch the Application
+If the project is already set up, ensure you are in the repository directory and then make the launch script executable and run it:
+```bash
+chmod +x launch.sh
+./launch.sh
+```
+
 ### For Windows(PowerShell):
+#### 1. Clone and Run Setup:
+
 ```bash
 iwr -useb https://raw.githubusercontent.com/fwromano/ontViz/main/setup.ps1 | iex
 ```
-These one‑line commands will clone the repository (if needed), create a virtual environment, install dependencies, start the Flask server, and open your browser automatically.
-
-If the project is already set up, you can simply launch the app:
-### For macOS/Linux:
-```bash
-./launch.sh
+Note: You may need to set your execution policy with:
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
-### For Windows(PowerShell):
-```bash
+This command will:
+- Clone the repository (if needed)
+- Create a virtual environment
+- Install dependencies
+- Start the Flask server
+- Automatically open your browser
+
+#### 2. Launch the Application
+If the project is already set up, open PowerShell, navigate to the repository directory, and run:
+```powershell
 .\launch.ps1
 ```
 
