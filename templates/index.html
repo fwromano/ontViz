@@ -8,8 +8,8 @@
         margin: 0;
         padding: 0;
         height: 100vh;
-        background-color: #222;
-        color: white;
+        background-color: #111;
+        color: #eee;
         font-family: Arial, sans-serif;
       }
       .container {
@@ -35,7 +35,7 @@
       #dragbar {
         width: 5px;
         cursor: ew-resize;
-        background-color: #444;
+        background-color: #555;
       }
       /* Sidebar styles */
       .sidebar {
@@ -43,15 +43,15 @@
         min-width: 200px;
         max-width: 600px;
         overflow-y: auto;
-        background-color: #333;
+        background-color: #222;
         padding: 10px;
         display: flex;
         flex-direction: column;
       }
       #toggle-sidebar {
-        background-color: #555;
+        background-color: #444;
         border: none;
-        color: white;
+        color: #eee;
         padding: 5px 10px;
         cursor: pointer;
         margin-bottom: 10px;
@@ -61,44 +61,31 @@
         position: absolute;
         top: 10px;
         right: 10px;
-        background-color: #555;
+        background-color: #444;
         border: none;
-        color: white;
+        color: #eee;
         padding: 5px 10px;
         cursor: pointer;
         display: none;
         z-index: 1000;
       }
-      .section {
-        margin-bottom: 20px;
+      /* Styling for collapsible sections as boxed elements */
+      .section details {
+        border: 1px solid #444;
+        margin-bottom: 10px;
+        padding: 5px;
+        background-color: #222;
       }
-      .section h2, .section h3, .section h4 {
-        margin-top: 0;
-      }
-      .legend p {
-        margin: 5px 0;
+      .section details summary {
+        cursor: pointer;
+        font-weight: bold;
+        outline: none;
       }
       .legend-color {
         display: inline-block;
         width: 12px;
         height: 12px;
         margin-right: 6px;
-      }
-      /* Node filter: type checkboxes and search input */
-      .filter-section, .search-section {
-        margin-bottom: 20px;
-      }
-      /* Relationship (edge) filter */
-      .edge-filter-section {
-        margin-bottom: 20px;
-      }
-      /* Interactive navigation section */
-      .nav-section {
-        margin-bottom: 20px;
-      }
-      /* Detailed Annotations toggle */
-      .annotation-section {
-        margin-bottom: 20px;
       }
       /* Collapsible tree styles */
       ul {
@@ -129,33 +116,28 @@
         display: block;
       }
       .highlight {
-        background-color: #555;
+        background-color: #444;
       }
       /* Details panel */
-      #details, #full-details {
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-      }
       #details {
-        background-color: #444;
+        background-color: #222;
         padding: 10px;
         border-radius: 4px;
-      }
-      #full-details {
-        display: none;
-        margin-top: 10px;
-        background-color: #555;
-        padding: 10px;
-        border-radius: 4px;
-      }
-      #toggle-all {
-        margin-top: 10px;
-        padding: 5px;
+        word-break: break-all;
+        white-space: normal;
       }
       input[type="text"] {
         width: 100%;
         padding: 5px;
         box-sizing: border-box;
+      }
+      button {
+        background-color: #444;
+        border: none;
+        color: #eee;
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-top: 5px;
       }
     </style>
   </head>
@@ -170,59 +152,76 @@
       <!-- Sidebar panel -->
       <div class="sidebar" id="sidebar">
         <button id="toggle-sidebar">Collapse Sidebar</button>
-        <!-- Legend Section -->
-        <div class="section legend">
-          <h3>Key</h3>
-          <p><span class="legend-color" style="background-color: #3498db;"></span> Class</p>
-          <p><span class="legend-color" style="background-color: #e67e22;"></span> Property</p>
-          <p><span class="legend-color" style="background-color: #2ecc71;"></span> Individual</p>
-        </div>
-        <!-- Node Filter Section -->
-        <div class="section filter-section">
-          <h3>Filter Nodes</h3>
-          <label><input type="checkbox" class="filter-checkbox" data-group="class" checked> Class</label><br>
-          <label><input type="checkbox" class="filter-checkbox" data-group="property" checked> Property</label><br>
-          <label><input type="checkbox" class="filter-checkbox" data-group="individual" checked> Individual</label>
-        </div>
+        
         <!-- Search Section -->
-        <div class="section search-section">
-          <h3>Search Nodes</h3>
-          <input type="text" id="search-input" placeholder="Enter search text">
-        </div>
-        <!-- Edge Filter Section -->
-        <div class="section edge-filter-section">
-          <h3>Filter Edges</h3>
-          <label><input type="checkbox" class="edge-filter" data-edge="subClassOf" checked> Subclass Relationships</label><br>
-          <label><input type="checkbox" class="edge-filter" data-edge="instance_of" checked> Instance Relationships</label><br>
-          <label><input type="checkbox" class="edge-filter" data-edge="domain" checked> Domain Relationships</label><br>
-          <label><input type="checkbox" class="edge-filter" data-edge="range" checked> Range Relationships</label>
-        </div>
-        <!-- Interactive Navigation Section -->
-        <div class="section nav-section">
-          <h3>Interactive Navigation</h3>
-          <button id="reset-view">Reset Graph View</button>
-        </div>
-        <!-- Detailed Annotations Section -->
-        <div class="section annotation-section">
-          <h3>Detailed Annotations</h3>
-          <label><input type="checkbox" id="toggle-detailed"> Show Detailed Annotations by default</label>
-        </div>
-        <!-- Hierarchy Section -->
-        <div class="section hierarchy">
-          <h2>Ontology Hierarchy</h2>
-          {{ tree_html|safe }}
-        </div>
+        <section class="section search-section">
+          <details>
+            <summary>Search Nodes</summary>
+            <input type="text" id="search-input" placeholder="Enter search text">
+          </details>
+        </section>
+        
+        <!-- Ontology Hierarchy Section -->
+        <section class="section hierarchy">
+          <details>
+            <summary>Ontology Hierarchy</summary>
+            {{ tree_html|safe }}
+          </details>
+        </section>
+        
+        <!-- Key Section -->
+        <section class="section legend">
+          <details>
+            <summary>Key</summary>
+            <p><span class="legend-color" style="background-color: #3498db;"></span> Class</p>
+            <p><span class="legend-color" style="background-color: #e67e22;"></span> Property</p>
+            <p><span class="legend-color" style="background-color: #2ecc71;"></span> Individual</p>
+          </details>
+        </section>
+        
+        <!-- Filter Nodes Section -->
+        <section class="section filter-section">
+          <details>
+            <summary>Filter Nodes</summary>
+            <label><input type="checkbox" class="filter-checkbox" data-group="class" checked> Class</label><br>
+            <label><input type="checkbox" class="filter-checkbox" data-group="property" checked> Property</label><br>
+            <label><input type="checkbox" class="filter-checkbox" data-group="individual" checked> Individual</label>
+          </details>
+        </section>
+        
+        <!-- Filter Edges Section -->
+        <section class="section edge-filter-section">
+          <details>
+            <summary>Filter Edges</summary>
+            <label><input type="checkbox" class="edge-filter" data-edge="subClassOf" checked> Subclass Relationships</label><br>
+            <label><input type="checkbox" class="edge-filter" data-edge="instance_of" checked> Instance Relationships</label><br>
+            <label><input type="checkbox" class="edge-filter" data-edge="domain" checked> Domain Relationships</label><br>
+            <label><input type="checkbox" class="edge-filter" data-edge="range" checked> Range Relationships</label>
+          </details>
+        </section>
+        
+        <!-- Reset Section -->
+        <section class="section nav-section">
+          <details>
+            <summary>Reset</summary>
+            <button id="reset-view">Reset Graph View</button>
+            <button id="view-new-graph">View New Graph</button>
+          </details>
+        </section>
+        
         <!-- Details Section -->
-        <div class="section details">
-          <h2>Details</h2>
-          <div id="details">Select a node to see details.</div>
-          <button id="toggle-all" style="display:none;">Show All Info</button>
-          <div id="full-details"></div>
-        </div>
+        <section class="section details">
+          <details>
+            <summary>Details</summary>
+            <div id="details">Select a node to see details.</div>
+          </details>
+        </section>
+        
       </div>
       <!-- Sidebar reopen button -->
       <button id="sidebar-reopen">&#9776;</button>
     </div>
+    
     <script>
       // Collapsible tree toggles.
       var toggler = document.getElementsByClassName("caret");
@@ -237,15 +236,18 @@
         });
       }
       
-      // Expand ancestors of an element.
+      // Enhanced function to expand all ancestors of a node.
       function expandAncestors(elem) {
         var parent = elem.parentElement;
         while (parent) {
-          if (parent.classList.contains("nested") && !parent.classList.contains("active")) {
+          if (parent.tagName.toLowerCase() === "details" && !parent.open) {
+            parent.open = true;
+          }
+          if (parent.tagName.toLowerCase() === "ul" && parent.classList.contains("nested") && !parent.classList.contains("active")) {
             parent.classList.add("active");
-            var li = parent.parentElement;
-            if (li) {
-              var caret = li.querySelector(".caret");
+            var liParent = parent.parentElement;
+            if (liParent) {
+              var caret = liParent.querySelector(".caret");
               if (caret && !caret.classList.contains("caret-down")) {
                 caret.classList.add("caret-down");
               }
@@ -257,24 +259,24 @@
       
       // Highlight hierarchy node and fetch node details.
       function highlightHierarchy(nodeId) {
-        document.querySelectorAll('.highlight').forEach(function(el) {
+        var highlighted = document.querySelectorAll('.highlight');
+        highlighted.forEach(function(el) {
           el.classList.remove('highlight');
         });
-        var sanitizedId = "node_" + nodeId.replace(/[^a-zA-Z0-9_]+/g, "_");
-        var elem = document.getElementById(sanitizedId);
-        if (elem) {
+        var sanitizedId = nodeId.replace(/[^a-zA-Z0-9_]+/g, "_");
+        var elems = document.querySelectorAll("[data-node-iri='" + sanitizedId + "']");
+        elems.forEach(function(elem) {
           expandAncestors(elem);
           elem.classList.add("highlight");
           elem.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+        });
+        
         fetch('/node_info?node_id=' + encodeURIComponent(nodeId))
           .then(response => response.json())
           .then(data => {
             var detailsDiv = document.getElementById('details');
             if (data.error) {
               detailsDiv.innerHTML = '<p>Error: ' + data.error + '</p>';
-              document.getElementById('toggle-all').style.display = "none";
-              document.getElementById('full-details').style.display = "none";
             } else {
               var html = '<h3>' + data.label + '</h3>' +
                          '<p><strong>IRI:</strong> ' + data.iri + '</p>' +
@@ -282,44 +284,18 @@
               if (data.comment) {
                 html += '<p><strong>Comment:</strong> ' + data.comment + '</p>';
               }
-              detailsDiv.innerHTML = html;
               var fullHtml = '<h4>All Details</h4><ul>';
               for (var key in data.all_details) {
                 fullHtml += '<li><strong>' + key + ':</strong> ' + data.all_details[key] + '</li>';
               }
               fullHtml += '</ul>';
-              var fullDetailsDiv = document.getElementById('full-details');
-              fullDetailsDiv.innerHTML = fullHtml;
-              if (Object.keys(data.all_details).length > 0) {
-                document.getElementById('toggle-all').style.display = "block";
-              } else {
-                document.getElementById('toggle-all').style.display = "none";
-              }
-              // If "Show Detailed Annotations" is checked, display details immediately.
-              if (document.getElementById('toggle-detailed').checked) {
-                fullDetailsDiv.style.display = "block";
-                document.getElementById('toggle-all').textContent = "Hide All Info";
-              } else {
-                fullDetailsDiv.style.display = "none";
-                document.getElementById('toggle-all').textContent = "Show All Info";
-              }
+              detailsDiv.innerHTML = html + fullHtml;
             }
           })
           .catch(error => {
             console.error('Error fetching node details:', error);
           });
       }
-      
-      document.getElementById('toggle-all').addEventListener('click', function() {
-        var fullDetailsDiv = document.getElementById('full-details');
-        if (fullDetailsDiv.style.display === "none") {
-          fullDetailsDiv.style.display = "block";
-          this.textContent = "Hide All Info";
-        } else {
-          fullDetailsDiv.style.display = "none";
-          this.textContent = "Show All Info";
-        }
-      });
       
       window.highlightHierarchy = highlightHierarchy;
       
@@ -397,10 +373,16 @@
         cb.addEventListener('change', sendEdgeFilterUpdate);
       });
       
-      // Reset Graph View button.
+      // Reset Graph View button: Undo all changes without reloading.
       document.getElementById('reset-view').addEventListener('click', function() {
         var iframe = document.querySelector('.graph iframe');
+        // Post a message to the iframe to reset nodes/edges.
         iframe.contentWindow.postMessage({type: "resetView"}, "*");
+      });
+      
+      // New button: View New Graph (returns to the upload page)
+      document.getElementById('view-new-graph').addEventListener('click', function() {
+        window.location.href = '/upload';
       });
       
       // Send initial filters on load.

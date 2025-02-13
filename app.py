@@ -23,19 +23,19 @@ def sanitize_id(s):
 def generate_tree_html(cls):
     """
     Recursively generate a collapsible tree HTML for a given class.
-    Each <li> gets an id based on the class IRI.
+    Each <li> gets a data attribute based on the class IRI.
     """
     id_str = sanitize_id(str(cls.iri))
     name = cls.name if cls.name else str(cls)
     subs = list(cls.subclasses())
     if subs:
-        html = f"<li id='node_{id_str}'><span class='caret'>{name}</span>"
+        html = f"<li data-node-iri='{id_str}'><span class='caret'>{name}</span>"
         html += "<ul class='nested'>"
         for sub in subs:
             html += generate_tree_html(sub)
         html += "</ul></li>"
     else:
-        html = f"<li id='node_{id_str}'>{name}</li>"
+        html = f"<li data-node-iri='{id_str}'>{name}</li>"
     return html
 
 def get_top_level_classes():
@@ -75,7 +75,7 @@ def index():
         'individual': '#2ecc71'
     }
     
-    net = Network(height="100%", width="100%", bgcolor="#222222", font_color="white")
+    net = Network(height="100%", width="100%", bgcolor="#222222", font_color="#eee")
     
     # Add nodes for classes, properties, and individuals.
     for cls in ontology.classes():
@@ -126,7 +126,7 @@ def index():
     graph_path = os.path.join("static", "graph.html")
     html_str = net.generate_html()
     
-    # Inject custom CSS for a dark, full-viewport view.
+    # Inject custom CSS for a very dark gray full-viewport view.
     custom_css = """
     <style>
       html, body {
@@ -135,7 +135,8 @@ def index():
         width: 100% !important;
         height: 100% !important;
         overflow: hidden !important;
-        background: #222 !important;
+        background: #111 !important;
+        color: #eee !important;
       }
       #mynetwork {
         width: 100vw !important;
@@ -165,7 +166,6 @@ def index():
         if (!data || !data.type) return;
         
         if (data.type === "updateNodeFilter") {
-          // Data contains nodeTypes (an object) and search (a string)
           var nodeTypes = data.nodeTypes;
           var search = data.search.toLowerCase();
           var nodes = network.body.data.nodes.get();
@@ -178,7 +178,6 @@ def index():
             network.body.data.nodes.update({id: node.id, hidden: !(typeVisible && searchVisible)});
           });
         } else if (data.type === "toggleEdges") {
-          // Data contains edges: an object mapping edge titles to booleans.
           var edgesFilter = data.edges;
           var edges = network.body.data.edges.get();
           edges.forEach(function(edge) {
@@ -187,6 +186,15 @@ def index():
             }
           });
         } else if (data.type === "resetView") {
+          // Reset all nodes and edges to visible.
+          var nodes = network.body.data.nodes.get();
+          nodes.forEach(function(node) {
+            network.body.data.nodes.update({ id: node.id, hidden: false });
+          });
+          var edges = network.body.data.edges.get();
+          edges.forEach(function(edge) {
+            network.body.data.edges.update({ id: edge.id, hidden: false });
+          });
           network.fit();
         }
       });
@@ -229,15 +237,30 @@ def upload():
         <meta charset="utf-8">
         <title>Upload Ontology</title>
         <style>
-          body { background-color: #222; color: white; font-family: Arial, sans-serif; padding: 20px; }
-          input { padding: 8px; }
+          html, body {
+            height: 100%;
+            margin: 0;
+            background-color: #111;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          input[type="file"] {
+            padding: 8px;
+          }
         </style>
       </head>
       <body>
-        <h1>Upload Ontology File</h1>
         <form method="post" enctype="multipart/form-data">
-          <input type="file" name="file"><br><br>
-          <input type="submit" value="Upload">
+          <h1>Upload Ontology File</h1>
+          <input type="file" name="file" onchange="this.form.submit()">
         </form>
       </body>
     </html>
