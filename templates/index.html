@@ -153,7 +153,15 @@
       <div class="sidebar" id="sidebar">
         <button id="toggle-sidebar">Collapse Sidebar</button>
         
-        <!-- Search Section -->
+        <!-- Ontology Hierarchy Section (first) -->
+        <section class="section hierarchy">
+          <details open>
+            <summary>Ontology Hierarchy</summary>
+            {{ tree_html|safe }}
+          </details>
+        </section>
+        
+        <!-- Search Section (second) -->
         <section class="section search-section">
           <details>
             <summary>Search Nodes</summary>
@@ -161,28 +169,15 @@
           </details>
         </section>
         
-        <!-- Ontology Hierarchy Section -->
-        <section class="section hierarchy">
-          <details>
-            <summary>Ontology Hierarchy</summary>
-            {{ tree_html|safe }}
-          </details>
-        </section>
-        
-        <!-- Key Section -->
-        <section class="section legend">
-          <details>
-            <summary>Key</summary>
-            <p><span class="legend-color" style="background-color: #3498db;"></span> Class</p>
-            <p><span class="legend-color" style="background-color: #e67e22;"></span> Property</p>
-            <p><span class="legend-color" style="background-color: #2ecc71;"></span> Individual</p>
-          </details>
-        </section>
-        
-        <!-- Filter Nodes Section -->
+        <!-- Combined Filter Nodes Section (Key + Filter Nodes) -->
         <section class="section filter-section">
           <details>
             <summary>Filter Nodes</summary>
+            <div class="legend">
+              <p><span class="legend-color" style="background-color: #3498db;"></span> Class</p>
+              <p><span class="legend-color" style="background-color: #e67e22;"></span> Property</p>
+              <p><span class="legend-color" style="background-color: #2ecc71;"></span> Individual</p>
+            </div>
             <label><input type="checkbox" class="filter-checkbox" data-group="class" checked> Class</label><br>
             <label><input type="checkbox" class="filter-checkbox" data-group="property" checked> Property</label><br>
             <label><input type="checkbox" class="filter-checkbox" data-group="individual" checked> Individual</label>
@@ -200,20 +195,20 @@
           </details>
         </section>
         
-        <!-- Reset Section -->
-        <section class="section nav-section">
-          <details>
-            <summary>Reset</summary>
-            <button id="reset-view">Reset Graph View</button>
-            <button id="view-new-graph">View New Graph</button>
-          </details>
-        </section>
-        
         <!-- Details Section -->
         <section class="section details">
           <details>
             <summary>Details</summary>
             <div id="details">Select a node to see details.</div>
+          </details>
+        </section>
+        
+        <!-- Reset Section (moved to bottom) -->
+        <section class="section nav-section">
+          <details>
+            <summary>Reset</summary>
+            <button id="reset-view">Reset Graph View</button>
+            <button id="view-new-graph">View New Graph</button>
           </details>
         </section>
         
