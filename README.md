@@ -75,6 +75,39 @@ If the project is already set up, open PowerShell, navigate to the repository di
 ```
 
 ## Setup Instructions
+
+### DOCKER
+#### 1. Clone Repo:
+```bash
+git clone https://github.com/fwromano/ontViz.git
+cd ontViz
+```
+#### 2. Build Docker Image:
+From the project root, run:
+```bash
+docker build -t ontviz .
+```
+#### 3. Run the Docker Container:
+```bash
+docker run -d -p 5000:5000 ontviz
+```
+#### 4. Access Application:
+Open your browser and navigate to: http://localhost:5000
+
+You should now see the OntViz application running.
+ #### 5. Managing Your Container:
+ - List Running Containers:
+   ```bash
+   docker ps
+   ```
+- View Container Logs:
+  ```bash
+  docker logs <container_id>
+- Stop the Container: 
+    ```bash
+    docker stop <container_id>
+    ```
+### MANUAL 
 If you prefer to set up and run the app manually, follow these steps:
 
 ### 1. Clone the Repository (or Download the Files)
