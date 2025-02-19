@@ -25,9 +25,12 @@ def generate_tree_html(cls):
     Recursively generate a collapsible tree HTML for a given class.
     Each <li> gets a data attribute based on the class IRI.
     """
+    # Skip owl:Thing
+    if cls == owlready2.Thing:
+        return ""
     id_str = sanitize_id(str(cls.iri))
     name = cls.name if cls.name else str(cls)
-    subs = list(cls.subclasses())
+    subs = [sub for sub in cls.subclasses() if sub != owlready2.Thing]
     if subs:
         html = f"<li data-node-iri='{id_str}'><span class='caret'>{name}</span>"
         html += "<ul class='nested'>"
@@ -42,6 +45,8 @@ def get_top_level_classes():
     """Return classes with no parents (except owl:Thing)."""
     top = []
     for cls in ontology.classes():
+        if cls == owlready2.Thing:
+            continue
         parents = [p for p in cls.is_a if isinstance(p, owlready2.entity.ThingClass)]
         if not parents or all(p == owlready2.Thing for p in parents):
             top.append(cls)
@@ -68,7 +73,6 @@ def index():
     if ontology is None:
         return redirect(url_for("upload"))
     
-    # Define colors for node groups.
     group_colors = {
         'class': '#3498db',
         'property': '#e67e22',
@@ -77,8 +81,10 @@ def index():
     
     net = Network(height="100%", width="100%", bgcolor="#222222", font_color="#eee")
     
-    # Add nodes for classes, properties, and individuals.
+    # Add nodes for classes, properties, and individuals, skipping owl:Thing.
     for cls in ontology.classes():
+        if cls == owlready2.Thing:
+            continue
         net.add_node(str(cls.iri), label=cls.name, title=str(cls.iri),
                      group="class", color=group_colors["class"])
     for prop in ontology.properties():
@@ -88,45 +94,34 @@ def index():
         net.add_node(str(ind.iri), label=ind.name, title=str(ind.iri),
                      group="individual", color=group_colors["individual"])
     
-    # Add subclass edges.
+    # Add subclass edges (skip if superclass is owl:Thing).
     for cls in ontology.classes():
+        if cls == owlready2.Thing:
+            continue
         for sup in cls.is_a:
-            if isinstance(sup, owlready2.entity.ThingClass):
-                node_cls = str(cls.iri)
-                node_sup = str(sup.iri)
-                if node_cls not in net.get_nodes():
-                    net.add_node(node_cls, color=group_colors["class"])
-                if node_sup not in net.get_nodes():
-                    net.add_node(node_sup, color=group_colors["class"])
-                net.add_edge(node_cls, node_sup, title="subClassOf")
+            if isinstance(sup, owlready2.entity.ThingClass) and sup != owlready2.Thing:
+                net.add_edge(str(cls.iri), str(sup.iri), title="subClassOf")
     
     # Add individual type edges.
     for ind in ontology.individuals():
         for cls in ind.is_a:
-            if isinstance(cls, owlready2.entity.ThingClass):
-                node_ind = str(ind.iri)
-                node_cls = str(cls.iri)
-                if node_cls not in net.get_nodes():
-                    net.add_node(node_cls, label=cls.name or node_cls,
-                                 title=node_cls, group="class", color=group_colors["class"])
-                net.add_edge(node_ind, node_cls, title="instance_of")
+            if isinstance(cls, owlready2.entity.ThingClass) and cls != owlready2.Thing:
+                net.add_edge(str(ind.iri), str(cls.iri), title="instance_of")
     
     # Add property domain and range edges.
     for prop in ontology.properties():
         if hasattr(prop, "domain"):
             for d in prop.domain:
-                if isinstance(d, owlready2.entity.ThingClass):
+                if isinstance(d, owlready2.entity.ThingClass) and d != owlready2.Thing:
                     net.add_edge(str(prop.iri), str(d.iri), title="domain")
         if hasattr(prop, "range"):
             for r in prop.range:
-                if isinstance(r, owlready2.entity.ThingClass):
+                if isinstance(r, owlready2.entity.ThingClass) and r != owlready2.Thing:
                     net.add_edge(str(prop.iri), str(r.iri), title="range")
     
-    # Generate the pyvis HTML.
     graph_path = os.path.join("static", "graph.html")
     html_str = net.generate_html()
     
-    # Inject custom CSS for a very dark gray full-viewport view.
     custom_css = """
     <style>
       html, body {
@@ -147,10 +142,8 @@ def index():
     """
     html_str = html_str.replace("</head>", custom_css)
     
-    # Inject custom JS that listens for various postMessages.
     custom_js = """
     <script type="text/javascript">
-      // When a node is clicked, notify the parent.
       network.on("click", function(params) {
         if (params.nodes.length > 0) {
           var nodeId = params.nodes[0];
@@ -160,7 +153,6 @@ def index():
         }
       });
       
-      // Listen for messages from the parent page.
       window.addEventListener("message", function(e) {
         var data = e.data;
         if (!data || !data.type) return;
@@ -186,7 +178,6 @@ def index():
             }
           });
         } else if (data.type === "resetView") {
-          // Reset all nodes and edges to visible.
           var nodes = network.body.data.nodes.get();
           nodes.forEach(function(node) {
             network.body.data.nodes.update({ id: node.id, hidden: false });
@@ -213,8 +204,7 @@ def index():
             tree_html += generate_tree_html(cls)
         tree_html += "</ul>"
     else:
-        root_class = getattr(ontology, "Thing", None) or owlready2.Thing
-        tree_html = "<ul>" + generate_tree_html(root_class) + "</ul>"
+        tree_html = ""
     
     return render_template("index.html", tree_html=tree_html)
 
@@ -273,7 +263,6 @@ def node_info():
         return jsonify({'error': 'No node id provided'}), 400
     entity = None
     entity_type = None
-    # Search in classes.
     for cls in ontology.classes():
         if str(cls.iri) == node_id:
             entity = cls
@@ -314,4 +303,3 @@ def node_info():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
-
