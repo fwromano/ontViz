@@ -263,17 +263,20 @@ def node_info():
         return jsonify({'error': 'No node id provided'}), 400
     entity = None
     entity_type = None
+    # Search in classes.
     for cls in ontology.classes():
         if str(cls.iri) == node_id:
             entity = cls
             entity_type = "Class"
             break
+    # Search in individuals if not found.
     if not entity:
         for ind in ontology.individuals():
             if str(ind.iri) == node_id:
                 entity = ind
                 entity_type = "Individual"
                 break
+    # Search in properties if still not found.
     if not entity:
         for prop in ontology.properties():
             if str(prop.iri) == node_id:
@@ -283,23 +286,24 @@ def node_info():
     if not entity:
         return jsonify({'error': 'Entity not found'}), 404
 
-    label = getattr(entity, "name", None) or str(entity)
-    comment = None
+    # Build a flat details dictionary.
+    details = {}
+    details['label'] = getattr(entity, "name", None) or str(entity)
+    details['iri'] = str(entity.iri)
+    details['type'] = entity_type
+
     if hasattr(entity, "comment"):
         if isinstance(entity.comment, list):
-            comment = " ".join(entity.comment)
+            details['comment'] = " ".join(entity.comment)
         else:
-            comment = entity.comment
+            details['comment'] = entity.comment
 
-    basic_info = {
-        'label': label,
-        'iri': str(entity.iri),
-        'type': entity_type,
-        'comment': comment
-    }
-    full_details = get_full_details(entity)
-    basic_info['all_details'] = full_details
-    return jsonify(basic_info)
+    # Add additional details.
+    extra_details = get_full_details(entity)
+    for key, value in extra_details.items():
+        details[key] = value
+
+    return jsonify(details)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)

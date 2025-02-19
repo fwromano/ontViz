@@ -273,18 +273,12 @@
             if (data.error) {
               detailsDiv.innerHTML = '<p>Error: ' + data.error + '</p>';
             } else {
-              var html = '<h3>' + data.label + '</h3>' +
-                         '<p><strong>IRI:</strong> ' + data.iri + '</p>' +
-                         '<p><strong>Type:</strong> ' + data.type + '</p>';
-              if (data.comment) {
-                html += '<p><strong>Comment:</strong> ' + data.comment + '</p>';
+              // Build a flat list of details.
+              var html = '';
+              for (var key in data) {
+                html += '<p><strong>' + key + ':</strong> ' + data[key] + '</p>';
               }
-              var fullHtml = '<h4>All Details</h4><ul>';
-              for (var key in data.all_details) {
-                fullHtml += '<li><strong>' + key + ':</strong> ' + data.all_details[key] + '</li>';
-              }
-              fullHtml += '</ul>';
-              detailsDiv.innerHTML = html + fullHtml;
+              detailsDiv.innerHTML = html;
             }
           })
           .catch(error => {
@@ -371,7 +365,6 @@
       // Reset Graph View button: Undo all changes without reloading.
       document.getElementById('reset-view').addEventListener('click', function() {
         var iframe = document.querySelector('.graph iframe');
-        // Post a message to the iframe to reset nodes/edges.
         iframe.contentWindow.postMessage({type: "resetView"}, "*");
       });
       
