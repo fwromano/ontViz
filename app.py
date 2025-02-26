@@ -52,18 +52,54 @@ def get_top_level_classes():
             top.append(cls)
     return top
 
+def readable_name(obj):
+    """Convert an OWL entity or restriction into a readable string."""
+    # Handle None values
+    if obj is None:
+        return "None"
+    
+    # Handle classes, properties, and individuals
+    if isinstance(obj, (owlready2.ThingClass, owlready2.PropertyClass, owlready2.Thing)):
+        # Use the IRI and take the part after the last '#' or '/' if available
+        if hasattr(obj, 'iri') and obj.iri:
+            iri = obj.iri
+            return iri.split('#')[-1].split('/')[-1]
+        # Fallback to name attribute or string representation
+        return str(obj).split('.')[-1]
+    
+    # Handle restrictions (e.g., CanPerformAction some clear_rubble)
+    elif isinstance(obj, owlready2.Restriction):
+        prop = readable_name(obj.property)
+        if obj.type == owlready2.SOME:
+            value = readable_name(obj.value)
+            return f"{prop} some {value}"
+        elif obj.type == owlready2.ONLY:
+            value = readable_name(obj.value)
+            return f"{prop} only {value}"
+        else:
+            return str(obj)
+    
+    # Handle lists (e.g., is_a might be a list of classes and restrictions)
+    elif isinstance(obj, list):
+        return ", ".join(readable_name(item) for item in obj if item is not None)
+    
+    # Fallback for other types
+    else:
+        return str(obj)
+
+
 def get_full_details(entity):
-    """Collect extra details by iterating over non-internal attributes."""
+    """Retrieve all attributes of an entity in a readable format."""
     details = {}
     for key in dir(entity):
+        # Skip private attributes and unneeded ones
         if key.startswith('_') or key in ('name', 'iri', 'comment'):
             continue
         try:
             value = getattr(entity, key)
+            # Exclude methods/functions
             if not callable(value):
-                if isinstance(value, list):
-                    value = ", ".join(str(v) for v in value)
-                details[key] = str(value)
+                details[key] = readable_name(value)
         except Exception:
             continue
     return details
