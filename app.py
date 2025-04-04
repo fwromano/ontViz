@@ -89,20 +89,53 @@ def readable_name(obj):
 
 
 def get_full_details(entity):
-    """Retrieve all attributes of an entity in a readable format."""
+    """Retrieve all attributes and related properties of an entity."""
     details = {}
+
     for key in dir(entity):
-        # Skip private attributes and unneeded ones
         if key.startswith('_') or key in ('name', 'iri', 'comment'):
             continue
         try:
             value = getattr(entity, key)
-            # Exclude methods/functions
             if not callable(value):
                 details[key] = readable_name(value)
         except Exception:
             continue
+
+    # If it's a class, add related properties
+    if isinstance(entity, owlready2.ThingClass):
+        related_out = []
+        related_in = []
+
+        for prop in ontology.object_properties():
+            if entity in prop.domain:
+                related_out.append(f"{prop.name} → {readable_name(prop.range)}")
+            if entity in prop.range:
+                related_in.append(f"{readable_name(prop.domain)} → {prop.name}")
+
+        for prop in ontology.data_properties():
+            if entity in prop.domain:
+                related_out.append(f"{prop.name} → {readable_name(prop.range)}")
+            if entity in prop.range:
+                related_in.append(f"{readable_name(prop.domain)} → {prop.name}")
+
+        if related_out:
+            details["Outgoing Properties"] = "; ".join(related_out)
+        if related_in:
+            details["Incoming Properties"] = "; ".join(related_in)
+    elif isinstance(entity, owlready2.Thing):
+        prop_values = {}
+        for prop in ontology.properties():
+            if entity in prop.get_relations():
+                values = prop[entity]
+                if values:
+                    prop_values[prop.name] = ", ".join(readable_name(v) for v in values)
+
+        if prop_values:
+            details["Property Values"] = "; ".join(f"{k}: {v}" for k, v in prop_values.items())
+
     return details
+
 
 @app.route('/')
 def index():
